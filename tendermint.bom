@@ -1,0 +1,73 @@
+# Copyright 2016 by Cloudsoft Corporation Limited
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+brooklyn.catalog:
+  version: "0.1-20160217.0036"
+
+  items:
+  - id: terndermint-mintnet
+    name: "Tendermint MintNet"
+    description: |
+      A cluster of Tendermint MintNet nodes running a distributed blockchain application.
+    origin: http://github.com/tendermint/mintnet/
+    iconUrl: http://bitcoinist.net/wp-content/uploads/2016/02/Tendermint-logo-300x300.png
+    itemType: template
+    item:
+      services:
+      - type: tendermint-mintnet-cluster
+        id: tendermint-mintnet-cluster
+        name: "Tendermint Cluster"
+        brooklyn.parameters:
+        - name: tendermint.node.count
+          description: |
+            The number of Tendermint nodes to create in the cluster.
+          type: integer
+          default: 4
+        brooklyn.config:
+          tendermint.node.count: 4
+
+  - id: tendermint-mintnet-cluster
+    name: "Tendermint MintNet Cluster"
+    description: |
+      Tendermint cluster.
+    item:
+      type: org.apache.brooklyn.entity.stock.BasicApplication
+      brooklyn.children:
+      - type: cluster
+        id: tendermint-cluster
+        name: "Tendermint Cluster"
+        initialSize: $brooklyn:config("tendermint.node.count")
+        memberSpec:
+          $brooklyn:entitySpec:
+            type: tendermint-node
+            name: "Tendermint Node"
+
+  - id: tendermint-node
+    name: "Tendermint Node"
+    description: |
+      Tendermint Node.
+    item:
+      type: org.apache.brooklyn.entity.software.base.SameServerEntity
+      brooklyn.children:
+      - type: docker:tendermint/core:1.0
+        brooklyn.config:
+          tendermint.genesis.core: "genesis.json"
+          tendermint.core.init: "init.sh"
+      - type: docker:tendermint/merkle:1.0
+        brooklyn.config:
+          tendermint.init.merkle: "init.sh"
+      - type: docker:tendermint/app:1.0
+        brooklyn.config:
+          tendermint.genesis.app: "genesis.json"
+          tendermint.init.app: "init.sh"
