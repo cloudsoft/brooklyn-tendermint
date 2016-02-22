@@ -34,8 +34,42 @@ brooklyn.catalog:
             The number of Tendermint nodes to create in the cluster.
           type: integer
           default: 4
+        - name: tendermint.application.name
+          description: |
+            The name of the Tendermint application being deployed.
+          type: string
+        - name: tendermint.application.seeds
+          description: |
+            The Tendermint application seeds.
+          type: string
+        - name: tendermint.application.root
+          description: |
+            The Tendermint application root.
+          type: string
+        - name: tendermint.application.proxy
+          description: |
+            The Tendermint application proxy.
+          type: string
+        - name: tendermint.init.data
+          description: |
+            The Tendermint init.sh script for the data container.
+          type: string
+          default: "/data/tendermint/data/init.sh"
+        - name: tendermint.init.app
+          description: |
+            The Tendermint init.sh script for the app container.
+          type: string
+          default: "/data/tendermint/app/init.sh"
+        - name: tendermint.init.core
+          description: |
+            The Tendermint init.sh script for the core container.
+          type: string
+          default: "/data/tendermint/core/init.sh"
         brooklyn.config:
           tendermint.node.count: 4
+          tendermint.init.data: "/data/tendermint/data/init.sh"
+          tendermint.init.app: "/data/tendermint/app/init.sh"
+          tendermint.init.core: "/data/tendermint/core/init.sh"
 
   - id: tendermint-mintnet-cluster
     name: "Tendermint MintNet Cluster"
@@ -56,18 +90,44 @@ brooklyn.catalog:
   - id: tendermint-node
     name: "Tendermint Node"
     description: |
-      Tendermint Node.
+      Tendermint Node running the common, data, app and core containers.
     item:
       type: org.apache.brooklyn.entity.software.base.SameServerEntity
+      brooklyn.config:
+        docker.container.strategies:
+        - $brooklyn:object:
+            type: "brooklyn.location.docker.strategy.GroupPlacementStrategy"
       brooklyn.children:
-      - type: docker:tendermint/core:1.0
+      - type: docker:tendermint/tmbase
         brooklyn.config:
-          tendermint.genesis.core: "genesis.json"
-          tendermint.core.init: "init.sh"
-      - type: docker:tendermint/merkle:1.0
+          docker.container.name: "common"
+          docker.image.entrypoint: "/bin/echo"
+          docker.container.volumes.export: "/data"
+      - type: docker:tendermint/tmbase
         brooklyn.config:
-          tendermint.init.merkle: "init.sh"
-      - type: docker:tendermint/app:1.0
+          docker.container.name: "data"
+          docker.image.entrypoint: $brooklyn:config("tendermint.init.data")
+          docker.container.volumes:
+            common: "/data"
+      - type: docker:tendermint/tmbase
         brooklyn.config:
-          tendermint.genesis.app: "genesis.json"
-          tendermint.init.app: "init.sh"
+          docker.container.name: "app"
+          docker.image.entrypoint: $brooklyn:config("tendermint.init.app")
+          docker.container.volumes:
+            common: "/data"
+      - type: docker:tendermint/tmbase
+        brooklyn.config:
+          docker.container.name: "core"
+          docker.image.entrypoint: $brooklyn:config("tendermint.init.core")
+          docker.container.links:
+          - "app"
+          docker.container.directPorts:
+          - 46656
+          - 46657
+          docker.container.environment:
+            TMNAME: $brooklyn:config("terdermint.application.name")
+            TMSEEDS: $brooklyn:config("terdermint.application.seeds")
+            TMROOT: $brooklyn:config("terdermint.application.root")
+            PROXYAPP: $brooklyn:config("terdermint.application.proxy")
+          docker.container.volumes:
+            common: "/data"
