@@ -20,11 +20,9 @@ location:
 
 services:
 - type: tendermint-mintnet
-  id: tendermint-mintnet
+  id: tendermint-mintnet-blackstar
   name: "Tendermint MintNet Blackstar Cluster"
   brooklyn.config:
     tendermint.node.count: 4
     tendermint.application.name: "blackstar"
-    tendermint.files.data: "http://example.org/blackstar-data.tgz"
-    tendermint.files.app: "http://example.org/blackstar-app.tgz"
-    tendermint.files.core: "http://example.org/blackstar-core.tgz"
+    tendermint.application.files: "/Users/adk/Workspace/Cloudsoft/mintnet/examples/blackstar"
