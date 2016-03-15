@@ -13,16 +13,13 @@
 # limitations under the License.
 
 location:
-  jclouds:PROVIDER:
-    region: REGION
-    identity: IDENTITY
-    credential: CREDENTIAL
+  "my-docker-cloud"
 
 services:
 - type: tendermint-mintnet
   id: tendermint-mintnet-blackstar
   name: "Tendermint MintNet Blackstar Cluster"
   brooklyn.config:
-    tendermint.node.count: 4
+    tendermint.node.count: 1
     tendermint.application.name: "blackstar"
-    tendermint.application.files: "/Users/adk/Workspace/Cloudsoft/mintnet/examples/blackstar"
+    tendermint.application.files: "/home/ubuntu/blackstar"

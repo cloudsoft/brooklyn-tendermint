@@ -13,7 +13,7 @@
 # limitations under the License.
 
 brooklyn.catalog:
-  version: "0.1-20160311.1203"
+  version: "0.1-20160315.1423"
 
   items:
   - id: tendermint-mintnet
@@ -41,11 +41,9 @@ brooklyn.catalog:
           use. This must contain sub-directories named "app", "core" and "data"
           with the "init.sh" and "genesis.json" files required for the application.
         type: string
-        default: "~/mintnet/data/"
+        default: "~/mintnet/"
       services:
       - type: tendermint-mintnet-cluster
-        id: tendermint-mintnet-cluster
-        name: "Tendermint MintNet Cluster"
         brooklyn.config:
           tendermint.node.count: 4
           tendermint.application.files: "~/mintnet/"
@@ -79,43 +77,43 @@ brooklyn.catalog:
             enricher.targetSensor: $brooklyn:sensor("tendermint.seeds")
             enricher.joiner.separator: ","
             enricher.joiner.quote: true
-      brooklyn.initializers:
-      - type: org.apache.brooklyn.core.sensor.StaticSensor
-        brooklyn.config:
-          name: tendermint.container.app
-          targetType: string
-          static.value:
-            $brooklyn:formatString:
-              - "%s_tm%s"
-              - $brooklyn:config("tendermint.application.name")
-              - "app"
-      - type: org.apache.brooklyn.core.sensor.StaticSensor
-        brooklyn.config:
-          name: tendermint.container.core
-          targetType: string
-          static.value:
-            $brooklyn:formatString:
-              - "%s_tm%s"
-              - $brooklyn:config("tendermint.application.name")
-              - "node"
-      - type: org.apache.brooklyn.core.sensor.StaticSensor
-        brooklyn.config:
-          name: tendermint.container.data
-          targetType: string
-          static.value:
-            $brooklyn:formatString:
-              - "%s_tm%s"
-              - $brooklyn:config("tendermint.application.name")
-              - "data"
-      - type: org.apache.brooklyn.core.sensor.StaticSensor
-        brooklyn.config:
-          name: tendermint.container.common
-          targetType: string
-          static.value:
-            $brooklyn:formatString:
-              - "%s_tm%s"
-              - $brooklyn:config("tendermint.application.name")
-              - "common"
+        brooklyn.initializers:
+        - type: org.apache.brooklyn.core.sensor.StaticSensor
+          brooklyn.config:
+            name: tendermint.container.app
+            targetType: string
+            static.value:
+              $brooklyn:formatString:
+                - "%s_tm%s"
+                - $brooklyn:config("tendermint.application.name")
+                - "app"
+        - type: org.apache.brooklyn.core.sensor.StaticSensor
+          brooklyn.config:
+            name: tendermint.container.core
+            targetType: string
+            static.value:
+              $brooklyn:formatString:
+                - "%s_tm%s"
+                - $brooklyn:config("tendermint.application.name")
+                - "node"
+        - type: org.apache.brooklyn.core.sensor.StaticSensor
+          brooklyn.config:
+            name: tendermint.container.data
+            targetType: string
+            static.value:
+              $brooklyn:formatString:
+                - "%s_tm%s"
+                - $brooklyn:config("tendermint.application.name")
+                - "data"
+        - type: org.apache.brooklyn.core.sensor.StaticSensor
+          brooklyn.config:
+            name: tendermint.container.common
+            targetType: string
+            static.value:
+              $brooklyn:formatString:
+                - "%s_tm%s"
+                - $brooklyn:config("tendermint.application.name")
+                - "common"
 
   - id: tendermint-node
     name: "Tendermint Node"
@@ -134,7 +132,7 @@ brooklyn.catalog:
         id: tendermint-common
         brooklyn.config:
           docker.container.name:
-            $brooklyn:component("tendermint-mintnet-cluster").attributeWhenReady("tendermint.container.common")
+            $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.common")
           docker.image.entrypoint: "/bin/echo"
           docker.container.volumes.export: "/data"
           files.runtime:
@@ -142,44 +140,41 @@ brooklyn.catalog:
           pre.launch.command: |
             echo "[BROOKLYN] Setup Tendermint core directory for this host
             tendermint show_validator --log_level=error
-            mkdir -p /data/tendermint/$HOSTNAME/core
-            mv ~/.tendermint/priv_validator.json /data/tendermint/$HOSTNAME/core/
-          env:
-            HOSTNAME: $brooklyn:attributeWhenReady("host.subnet.address")
+            mv ~/.tendermint/priv_validator.json /data/tendermint/core/
       - type: docker:tendermint/tmbase
         id: tendermint-data
         brooklyn.config:
           docker.container.name:
-            $brooklyn:component("tendermint-mintnet-cluster").attributeWhenReady("tendermint.container.data")
+            $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.data")
           docker.image.entrypoint: "/data/tendermint/data/init.sh"
           docker.host.volumes:
-            $brooklyn:component("tendermint-mintnet-cluster").attributeWhenReady("tendermint.container.common"):
+            $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.common"):
               "/data"
           checkRunning.command: |
             test -S "/data/tendermint/data/data.sock"
-          start.latch:
+          provision.latch:
             $brooklyn:sibling("tendermint-common").attributeWhenReady("service.isUp")
       - type: docker:tendermint/tmbase
         id: tendermint-app
         brooklyn.config:
           docker.container.name:
-            $brooklyn:component("tendermint-mintnet-cluster").attributeWhenReady("tendermint.container.app")
+            $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.app")
           docker.image.entrypoint: "/data/tendermint/app/init.sh"
           docker.container.directPorts:
           - 46658
           docker.host.volumes:
-            $brooklyn:component("tendermint-mintnet-cluster").attributeWhenReady("tendermint.container.common"):
+            $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.common"):
               "/data"
-          start.latch:
+          provision.latch:
             $brooklyn:sibling("tendermint-data").attributeWhenReady("service.isUp")
       - type: docker:tendermint/tmbase
         id: tendermint-core
         brooklyn.config:
           docker.container.name:
-            $brooklyn:component("tendermint-mintnet-cluster").attributeWhenReady("tendermint.container.core")
+            $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.core")
           docker.image.entrypoint: "/data/tendermint/core/init.sh"
           docker.container.links:
-          - $brooklyn:sibling("tendermint-mintnet-cluster").attributeWhenReady("tendermint.container.app")
+          - $brooklyn:sibling("tendermint-cluster").attributeWhenReady("tendermint.container.app")
           docker.container.directPorts:
           - 46656
           - 46657
@@ -192,12 +187,12 @@ brooklyn.catalog:
               - "tcp://%s_tmapp:46658/"
               - $brooklyn:config("tendermint.application.name")
           docker.host.volumes:
-            $brooklyn:component("tendermint-mintnet-cluster").attributeWhenReady("tendermint.container.common"):
+            $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.common"):
               "/data"
           post.launch.command: |
             echo "[BROOKLYN] Check Tendermint validator"
             tendermint show_validator --log_level=error
-          start.latch:
+          provision.latch:
             $brooklyn:sibling("tendermint-data").attributeWhenReady("service.isUp")
       brooklyn.initializers:
       - type: org.apache.brooklyn.core.sensor.StaticSensor
