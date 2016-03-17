@@ -22,4 +22,4 @@ services:
   brooklyn.config:
     tendermint.node.count: 1
     tendermint.application.name: "blackstar"
-    tendermint.application.files: "/home/ubuntu/blackstar"
+    tendermint.application.archive: "/home/ubuntu/blackstar.tgz"

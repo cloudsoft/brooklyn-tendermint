@@ -13,7 +13,7 @@
 # limitations under the License.
 
 brooklyn.catalog:
-  version: "0.1-20160315.1423"
+  version: "0.1-20160317.1937"
 
   items:
   - id: tendermint-mintnet
@@ -34,19 +34,19 @@ brooklyn.catalog:
         description: |
           The name of the Tendermint application being deployed.
         type: string
-      - name: tendermint.application.files
+      - name: tendermint.application.archive
         description: |
-          The directory containing files for the tendermint containers. This can
-          also be a URL pointing to an archive file, which will be unpacked before
+          The tgz archive containing files for the tendermint containers. This can
+          also be a URL pointing to the archive file. This will be unpacked before
           use. This must contain sub-directories named "app", "core" and "data"
           with the "init.sh" and "genesis.json" files required for the application.
         type: string
-        default: "~/mintnet/"
+        default: "application.tar.gz"
       services:
       - type: tendermint-mintnet-cluster
         brooklyn.config:
           tendermint.node.count: 4
-          tendermint.application.files: "~/mintnet/"
+          tendermint.application.files: "application.tar.gz"
 
   - id: tendermint-mintnet-cluster
     name: "Tendermint MintNet Cluster"
@@ -122,6 +122,8 @@ brooklyn.catalog:
     item:
       type: org.apache.brooklyn.entity.stock.BasicStartable
       brooklyn.config:
+        docker.useSsh: false
+        run.dir: /tmp/tendermint
         docker.container.strategies:
         - $brooklyn:object:
             type: "brooklyn.location.docker.strategy.GroupPlacementStrategy"
@@ -133,14 +135,22 @@ brooklyn.catalog:
         brooklyn.config:
           docker.container.name:
             $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.common")
-          docker.image.entrypoint: "/bin/echo"
+          docker.image.entrypoint:
+          - "/bin/bash"
+          docker.image.commands:
+          - "-c"
+          - "while true; do sleep 60; done"
           docker.container.volumes.export: "/data"
           files.runtime:
-            $brooklyn:config("tendermint.application.files"): "/data/tendermint"
+            $brooklyn:config("tendermint.application.archive"): "/data/tendermint/application.tgz"
           pre.launch.command: |
-            echo "[BROOKLYN] Setup Tendermint core directory for this host
+            echo "[BROOKLYN] Setup Tendermint directory for this host
+            cd /data/tendermint
+            tar zxf application.tgz
             tendermint show_validator --log_level=error
             mv ~/.tendermint/priv_validator.json /data/tendermint/core/
+          env:
+            ARCHIVE: $brooklyn:config("tendermint.application.archive")
       - type: docker:tendermint/tmbase
         id: tendermint-data
         brooklyn.config:
