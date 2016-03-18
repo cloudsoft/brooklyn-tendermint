@@ -11,7 +11,7 @@ those machines.
 ![Tendermint Brooklyn Architecture](docs/tendermint-brooklyn-architecture.png)
 
 This diagram shows the components deployed by Brooklyn for a Tendermint MintNet
-cluster, using the [`tendermint.bom`](tendermint.bom) catalog entry.
+cluster, using the [`tendermint.bom`](tendermint-mintnet.bom) catalog entry.
 
 ----
 
