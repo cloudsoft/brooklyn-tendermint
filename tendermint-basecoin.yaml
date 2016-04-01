@@ -13,7 +13,7 @@
 # limitations under the License.
 
 location:
-  "my-docker-cloud"
+  "calico-docker-cloud"
 
 services:
 - type: tendermint-mintnet
