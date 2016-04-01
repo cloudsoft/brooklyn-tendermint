@@ -17,9 +17,9 @@ location:
 
 services:
 - type: tendermint-mintnet
-  id: tendermint-mintnet-blackstar
-  name: "Tendermint MintNet Blackstar Cluster"
+  id: tendermint-mintnet-basecoin
+  name: "Tendermint MintNet Basecoin Cluster"
   brooklyn.config:
-    tendermint.node.count: 1
-    tendermint.application.name: "blackstar"
-    tendermint.application.archive: "/home/ubuntu/blackstar.tgz"
+    tendermint.node.count: 4
+    tendermint.application.name: "basecoin"
+    tendermint.application.archive: "https://s3-eu-west-1.amazonaws.com/brooklyn-tendermint/basecoin.tgz"

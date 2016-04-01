@@ -13,6 +13,27 @@ those machines.
 This diagram shows the components deployed by Brooklyn for a Tendermint MintNet
 cluster, using the [`tendermint.bom`](tendermint-mintnet.bom) catalog entry.
 
+## Getting Started
+
+First, deploy a Clocker environment, using the latest release in the 1.1.x
+stream. Once this is running, install the [tendermint-mintnet.bom](tendermint-mintnet.bom)
+file in the Clocker catalog. Then, you must ensure you have access to an
+archive containing the required data files for your mintnet application.
+
+Files for the [Basecoin](https://github.com/tendermint/basecoin) application have been uploaded
+as [basecoin.tgz](https://s3-eu-west-1.amazonaws.com/brooklyn-tendermint/basecoin.tgz)
+for use in a blueprint, as follows:
+
+```YAML
+services:
+- type: tendermint-mintnet
+  brooklyn.config:
+    tendermint.application.name: "basecoin"
+    tendermint.application.archive: "https://s3-eu-west-1.amazonaws.com/brooklyn-tendermint/basecoin.tgz"
+```
+
+The full blueprint can be downloaded as [tendermint-basecoin.yaml](tendermint-basecoin.yaml).
+
 ----
 
 Licensed under the Apache License, Version 2.0 (the "License");
