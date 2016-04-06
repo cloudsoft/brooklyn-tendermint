@@ -13,7 +13,7 @@
 # limitations under the License.
 
 brooklyn.catalog:
-  version: "0.1-20160401.2250"
+  version: "0.1-20160406.1914"
 
   items:
   - id: tendermint-mintnet
@@ -34,6 +34,9 @@ brooklyn.catalog:
         description: |
           The name of the Tendermint application being deployed.
         type: string
+        default: "example"
+        constraints:
+        - required
       - name: tendermint.application.archive
         description: |
           The tgz archive containing files for the tendermint containers. This can
@@ -41,12 +44,13 @@ brooklyn.catalog:
           use. This must contain sub-directories named "app", "core" and "data"
           with the "init.sh" and "genesis.json" files required for the application.
         type: string
-        default: "application.tar.gz"
+        default: "file:///example/application.tar.gz"
+        constraints:
+        - required
       services:
       - type: tendermint-mintnet-cluster
         brooklyn.config:
           tendermint.node.count: 4
-          tendermint.application.files: "application.tar.gz"
 
   - id: tendermint-mintnet-cluster
     name: "Tendermint MintNet Cluster"
@@ -129,6 +133,13 @@ brooklyn.catalog:
             type: "brooklyn.location.docker.strategy.GroupPlacementStrategy"
             brooklyn.config:
               docker.constraint.exclusive: true
+      brooklyn.enrichers:
+      - type: org.apache.brooklyn.enricher.stock.Propagator
+        brooklyn.config:
+          uniqueTag: endpoint-propagator
+          producer: $brooklyn:child("tendermint-common")
+          propagating:
+          - $brooklyn:sensor("tendermint.machine.endpoint")
       brooklyn.children:
       - type: docker:tendermint/tmbase
         id: tendermint-common
@@ -149,8 +160,16 @@ brooklyn.catalog:
             tar zxf application.tgz
             tendermint show_validator --log_level=error
             mv ~/.tendermint/priv_validator.json /data/tendermint/core/
-          env:
-            ARCHIVE: $brooklyn:config("tendermint.application.archive")
+        brooklyn.initializers:
+        - type: org.apache.brooklyn.core.sensor.StaticSensor
+          brooklyn.config:
+            name: tendermint.machine.endpoint
+            targetType: string
+            static.value:
+              $brooklyn:formatString:
+                - "%s:%d"
+                - $brooklyn:attributeWhenReady("host.address")
+                - 46656
       - type: docker:tendermint/tmbase
         id: tendermint-data
         brooklyn.config:
@@ -182,7 +201,7 @@ brooklyn.catalog:
             $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.core")
           docker.image.entrypoint: "/data/tendermint/core/init.sh"
           docker.container.links:
-          - $brooklyn:sibling("tendermint-cluster").attributeWhenReady("tendermint.container.app")
+          - $brooklyn:sibling("tendermint-app")
           docker.container.directPorts:
           - 46656
           - 46657
@@ -201,13 +220,3 @@ brooklyn.catalog:
             tendermint show_validator --log_level=error
           provision.latch:
             $brooklyn:sibling("tendermint-data").attributeWhenReady("service.isUp")
-      brooklyn.initializers:
-      - type: org.apache.brooklyn.core.sensor.StaticSensor
-        brooklyn.config:
-          name: tendermint.machine.endpoint
-          targetType: string
-          static.value:
-            $brooklyn:formatString:
-              - "%s:%d"
-              - $brooklyn:attributeWhenReady("host.subnet.address")
-              - 46656
