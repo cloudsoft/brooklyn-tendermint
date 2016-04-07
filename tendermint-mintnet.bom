@@ -13,7 +13,7 @@
 # limitations under the License.
 
 brooklyn.catalog:
-  version: "0.1-20160406.1914"
+  version: "0.1-20160407.0016"
 
   items:
   - id: tendermint-mintnet
@@ -177,7 +177,7 @@ brooklyn.catalog:
             $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.data")
           docker.image.entrypoint: "/data/tendermint/data/init.sh"
           docker.container.volumes.import:
-            $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.common")
+          - $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.common")
           checkRunning.command: |
             test -S "/data/tendermint/data/data.sock"
           provision.latch:
@@ -214,9 +214,9 @@ brooklyn.catalog:
               - "tcp://%s_tmapp:46658/"
               - $brooklyn:config("tendermint.application.name")
           docker.container.volumes.import:
-            $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.common")
+          - $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.common")
           post.launch.command: |
             echo "[BROOKLYN] Check Tendermint validator"
             tendermint show_validator --log_level=error
           provision.latch:
-            $brooklyn:sibling("tendermint-data").attributeWhenReady("service.isUp")
+            $brooklyn:sibling("tendermint-app").attributeWhenReady("service.isUp")
