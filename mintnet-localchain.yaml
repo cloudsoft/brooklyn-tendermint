@@ -18,7 +18,7 @@ location:
 services:
 - type: tendermint-mintnet
   id: tendermint-mintnet-localchain
-  name: "Tendermint MintNet Localchain Cluster"
+  name: "Tendermint Localchain Application"
   brooklyn.config:
     tendermint.node.count: 1
     tendermint.application.name: "localchain"

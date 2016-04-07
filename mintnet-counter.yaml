@@ -18,7 +18,7 @@ location:
 services:
 - type: tendermint-mintnet
   id: tendermint-mintnet-counter
-  name: "Tendermint MintNet Counter Cluster"
+  name: "Tendermint Counter Application"
   brooklyn.config:
     tendermint.node.count: 4
     tendermint.application.name: "counter"

@@ -18,7 +18,7 @@ location:
 services:
 - type: tendermint-mintnet
   id: tendermint-mintnet-nomnomcoin
-  name: "Tendermint MintNet Nomnomcoin Cluster"
+  name: "Tendermint Nomnomcoin Application"
   brooklyn.config:
     tendermint.node.count: 4
     tendermint.application.name: "nomnomcoin"

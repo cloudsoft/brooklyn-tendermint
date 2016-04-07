@@ -13,7 +13,7 @@
 # limitations under the License.
 
 brooklyn.catalog:
-  version: "0.1-20160407.0016"
+  version: "0.1-20160407.0257"
 
   items:
   - id: tendermint-mintnet
@@ -58,6 +58,13 @@ brooklyn.catalog:
       Tendermint cluster.
     item:
       type: org.apache.brooklyn.entity.stock.BasicApplication
+      brooklyn.enrichers:
+      - type: org.apache.brooklyn.enricher.stock.Propagator
+        brooklyn.config:
+          uniqueTag: main-uri-propagator
+          producer: $brooklyn:entity("tendermint-cluster")
+          propagating:
+          - $brooklyn:sensor("main.uri")
       brooklyn.children:
       - type: cluster
         id: tendermint-cluster
@@ -80,7 +87,24 @@ brooklyn.catalog:
             enricher.sourceSensor: $brooklyn:sensor("tendermint.machine.endpoint.list")
             enricher.targetSensor: $brooklyn:sensor("tendermint.seeds")
             enricher.joiner.separator: ","
-            enricher.joiner.quote: true
+            enricher.joiner.quote: false
+        - type: org.apache.brooklyn.enricher.stock.Joiner
+          brooklyn.config:
+            uniqueTag: tendermint-endpoint
+            enricher.sourceSensor: $brooklyn:sensor("tendermint.machine.endpoint.list")
+            enricher.targetSensor: $brooklyn:sensor("tendermint.endpoint")
+            enricher.joiner.minimum: 1
+            enricher.joiner.maximum: 1
+            enricher.joiner.quote: false
+        - type: org.apache.brooklyn.enricher.stock.Transformer
+          brooklyn.config:
+            uniqueTag: tendermint-main-uri-generator
+            enricher.sourceSensor: $brooklyn:sensor("tendermint.endpoint")
+            enricher.targetSensor: $brooklyn:sensor("main.uri")
+            enricher.targetValue:
+              $brooklyn:formatString:
+              - "http://%s/"
+              - $brooklyn:attributeWhenReady("tendermint.endpoint")
         brooklyn.initializers:
         - type: org.apache.brooklyn.core.sensor.StaticSensor
           brooklyn.config:
