@@ -216,6 +216,8 @@ brooklyn.catalog:
           - 46658
           docker.container.volumes.import:
             $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.common")
+          checkRunning.command: |
+            test -S "/data/tendermint/data/data.sock"
           provision.latch:
             $brooklyn:sibling("tendermint-data").attributeWhenReady("service.isUp")
       - type: docker:tendermint/tmbase
