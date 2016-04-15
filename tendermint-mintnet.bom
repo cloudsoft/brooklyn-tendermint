@@ -13,7 +13,8 @@
 # limitations under the License.
 
 brooklyn.catalog:
-  version: "0.1-20160407.0257"
+  id: brooklyn-tendermint
+  version: "0.1-20160415.0342"
 
   items:
   - id: tendermint-mintnet
@@ -24,38 +25,40 @@ brooklyn.catalog:
     iconUrl: http://bitcoinist.net/wp-content/uploads/2016/02/Tendermint-logo-300x300.png
     itemType: template
     item:
-      brooklyn.parameters:
-      - name: tendermint.node.count
-        description: |
-          The number of Tendermint nodes to create in the cluster.
-        type: integer
-        default: 4
-      - name: tendermint.application.name
-        description: |
-          The name of the Tendermint application being deployed.
-        type: string
-        default: "example"
-        constraints:
-        - required
-      - name: tendermint.application.archive
-        description: |
-          The tgz archive containing files for the tendermint containers. This can
-          also be a URL pointing to the archive file. This will be unpacked before
-          use. This must contain sub-directories named "app", "core" and "data"
-          with the "init.sh" and "genesis.json" files required for the application.
-        type: string
-        default: "file:///example/application.tar.gz"
-        constraints:
-        - required
       services:
       - type: tendermint-mintnet-cluster
+        id: tendermint-deployment
+        name: "Tendermint MintNet Cluster"
+        brooklyn.parameters:
+        - name: tendermint.node.count
+          description: |
+            The number of Tendermint nodes to create in the cluster.
+          type: integer
+          default: 4
+        - name: tendermint.application.name
+          description: |
+            The name of the Tendermint application being deployed.
+          type: string
+          default: "example"
+          constraints:
+          - required
+        - name: tendermint.application.archive
+          description: |
+            The tgz archive containing files for the tendermint containers. This can
+            also be a URL pointing to the archive file. This will be unpacked before
+            use. This must contain sub-directories named "app", "core" and "data"
+            with the "init.sh" and "genesis.json" files required for the application.
+          type: string
+          default: "file:///example/application.tar.gz"
+          constraints:
+          - required
         brooklyn.config:
           tendermint.node.count: 4
 
   - id: tendermint-mintnet-cluster
     name: "Tendermint MintNet Cluster"
     description: |
-      Tendermint cluster.
+      Tendermint cluster on application nodes on Docker hosts.
     item:
       type: org.apache.brooklyn.entity.stock.BasicApplication
       brooklyn.enrichers:
@@ -154,7 +157,7 @@ brooklyn.catalog:
         run.dir: /tmp/tendermint
         docker.container.strategies:
         - $brooklyn:object:
-            type: "brooklyn.location.docker.strategy.GroupPlacementStrategy"
+            type: clocker.docker.location.strategy.basic.GroupPlacementStrategy
             brooklyn.config:
               docker.constraint.exclusive: true
       brooklyn.enrichers:
