@@ -14,7 +14,7 @@
 
 brooklyn.catalog:
   id: brooklyn-tendermint
-  version: "0.1-20160415.0342"
+  version: "0.1-20160419.2225"
 
   items:
   - id: tendermint-mintnet
@@ -230,7 +230,8 @@ brooklyn.catalog:
             $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.container.core")
           docker.image.entrypoint: "/data/tendermint/core/init.sh"
           docker.container.links:
-          - $brooklyn:sibling("tendermint-app")
+            $brooklyn:entity("tendermint-cluster").attributeWhenReady("tendermint.container.app"):
+              $brooklyn:sibling("tendermint-app")
           docker.container.directPorts:
           - 46656
           - 46657
