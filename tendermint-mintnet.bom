@@ -14,7 +14,7 @@
 
 brooklyn.catalog:
   id: brooklyn-tendermint
-  version: "0.1-20160423.0723"
+  version: "0.1-20160425.1324"
 
   items:
   - id: tendermint-mintnet
@@ -134,11 +134,9 @@ brooklyn.catalog:
       - type: docker:tendermint/tmbase
         id: tendermint-common
         brooklyn.config:
-          docker.image.entrypoint:
-          - "/bin/bash"
           docker.image.commands:
-          - "-c"
-          - "while true; do sleep 60; done"
+          - "/bin/bash"
+          docker.container.interactive: true
           docker.container.volumes.export: "/data"
           files.runtime:
             $brooklyn:config("tendermint.application.archive"): "/data/tendermint/application.tgz"
