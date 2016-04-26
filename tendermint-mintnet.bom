@@ -14,7 +14,7 @@
 
 brooklyn.catalog:
   id: brooklyn-tendermint
-  version: "0.1-20160427.0001"
+  version: "0.1-20160427.0217"
 
   items:
   - id: tendermint-mintnet
@@ -54,7 +54,7 @@ brooklyn.catalog:
           - required
         brooklyn.config:
           tendermint.node.count: 4
-          tendermint.chain.id: "test"
+          tendermint.chainid: "test"
 
   - id: tendermint-mintnet-cluster
     name: "Tendermint MintNet Cluster"
@@ -90,6 +90,7 @@ brooklyn.catalog:
             uniqueTag: tendermint-seeds-joiner
             enricher.sourceSensor: $brooklyn:sensor("tendermint.endpoint.list")
             enricher.targetSensor: $brooklyn:sensor("tendermint.seeds")
+            enricher.joiner.minimum: $brooklyn:config("tendermint.node.count")
             enricher.joiner.separator: ","
             enricher.joiner.quote: false
         - type: org.apache.brooklyn.enricher.stock.Joiner
@@ -120,6 +121,7 @@ brooklyn.catalog:
             uniqueTag: tendermint-pubkey-joiner
             enricher.sourceSensor: $brooklyn:sensor("tendermint.pubkey.list")
             enricher.targetSensor: $brooklyn:sensor("tendermint.pubkey.json")
+            enricher.joiner.minimum: $brooklyn:config("tendermint.node.count")
             enricher.joiner.separator: ","
             enricher.joiner.quote: false
         - type: org.apache.brooklyn.enricher.stock.Transformer
@@ -130,8 +132,8 @@ brooklyn.catalog:
             enricher.targetValue:
               $brooklyn:formatString:
               - "{\"genesis_time\":\"2016-01-01T00:00:00.000Z\",\"chain_id\":\"chain-%s\",\"validators\":[ %s ],\"app_hash\":\"\"}"
-              - $brooklyn:config("tendermint.chainId")
-              - $brooklyn:attributeWhenReady("tendermint.machine.pubkey.data")
+              - $brooklyn:config("tendermint.chainid")
+              - $brooklyn:attributeWhenReady("tendermint.pubkey.json")
 
   - id: tendermint-node
     name: "Tendermint Node"
@@ -190,8 +192,9 @@ brooklyn.catalog:
             name: tendermint.machine.pubkey
             targetType: java.lang.String
             period: 1m
+            trim: true
             command: |
-              tendermint show_validator --log_level=error | tr -d '\\n\\\"'
+              tendermint show_validator --log_level=error | tr -d '\\\"'
         brooklyn.enrichers:
         - type: org.apache.brooklyn.enricher.stock.Transformer
           brooklyn.config:
@@ -225,7 +228,6 @@ brooklyn.catalog:
           docker.container.environment:
             TMREPO: "github.com/tendermint/tendermint"
             TMNAME: $brooklyn:config("tendermint.application.name")
-          shell.environment:
             GENESIS_JSON: $brooklyn:component("tendermint-cluster").$brooklyn:attributeWhenReady("tendermint.genesis.json")
           docker.container.volumes.import:
           - $brooklyn:sibling("tendermint-common").attributeWhenReady("docker.container.id")

@@ -22,4 +22,5 @@ services:
   brooklyn.config:
     tendermint.node.count: 4
     tendermint.application.name: "nomnomcoin"
+    tendermint.chainid: "nomnom"
     tendermint.application.archive: "https://s3-eu-west-1.amazonaws.com/brooklyn-tendermint/nomnomcoin.tgz"

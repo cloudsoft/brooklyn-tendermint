@@ -22,4 +22,5 @@ services:
   brooklyn.config:
     tendermint.node.count: 1
     tendermint.application.name: "localchain"
+    tendermint.chainid: "local"
     tendermint.application.archive: "https://s3-eu-west-1.amazonaws.com/brooklyn-tendermint/localchain.tgz"
