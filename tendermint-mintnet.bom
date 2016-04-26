@@ -14,7 +14,7 @@
 
 brooklyn.catalog:
   id: brooklyn-tendermint
-  version: "0.1-20160425.1324"
+  version: "0.1-20160426.1450"
 
   items:
   - id: tendermint-mintnet
@@ -198,8 +198,9 @@ brooklyn.catalog:
               - $brooklyn:config("tendermint.application.name")
           docker.container.volumes.import:
           - $brooklyn:sibling("tendermint-common").attributeWhenReady("docker.container.id")
-          post.launch.command: |
+          pre.launch.command: |
             echo "[BROOKLYN] Check Tendermint validator"
+            while [ ! $(which tendermint) ] ; do sleep 10 ; done
             tendermint show_validator --log_level=error
           provision.latch:
             $brooklyn:sibling("tendermint-app").attributeWhenReady("service.isUp")
