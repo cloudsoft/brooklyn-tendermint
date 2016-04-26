@@ -14,7 +14,7 @@
 
 brooklyn.catalog:
   id: brooklyn-tendermint
-  version: "0.1-20160426.2221"
+  version: "0.1-20160426.2314"
 
   items:
   - id: tendermint-mintnet
@@ -54,6 +54,7 @@ brooklyn.catalog:
           - required
         brooklyn.config:
           tendermint.node.count: 4
+          tendermint.chain.id: "test"
 
   - id: tendermint-mintnet-cluster
     name: "Tendermint MintNet Cluster"
@@ -82,19 +83,19 @@ brooklyn.catalog:
           brooklyn.config:
             uniqueTag: tendermint-endpoint-aggregator
             enricher.sourceSensor: $brooklyn:sensor("tendermint.machine.endpoint")
-            enricher.targetSensor: $brooklyn:sensor("tendermint.machine.endpoint.list")
+            enricher.targetSensor: $brooklyn:sensor("tendermint.endpoint.list")
             enricher.aggregating.fromMembers: true
         - type: org.apache.brooklyn.enricher.stock.Joiner
           brooklyn.config:
             uniqueTag: tendermint-seeds-joiner
-            enricher.sourceSensor: $brooklyn:sensor("tendermint.machine.endpoint.list")
+            enricher.sourceSensor: $brooklyn:sensor("tendermint.endpoint.list")
             enricher.targetSensor: $brooklyn:sensor("tendermint.seeds")
             enricher.joiner.separator: ","
             enricher.joiner.quote: false
         - type: org.apache.brooklyn.enricher.stock.Joiner
           brooklyn.config:
             uniqueTag: tendermint-endpoint
-            enricher.sourceSensor: $brooklyn:sensor("tendermint.machine.endpoint.list")
+            enricher.sourceSensor: $brooklyn:sensor("tendermint.endpoint.list")
             enricher.targetSensor: $brooklyn:sensor("tendermint.endpoint")
             enricher.joiner.minimum: 1
             enricher.joiner.maximum: 1
@@ -106,8 +107,31 @@ brooklyn.catalog:
             enricher.targetSensor: $brooklyn:sensor("main.uri")
             enricher.targetValue:
               $brooklyn:formatString:
-              - "http://%s/"
+              - "http://%s/blockchain"
               - $brooklyn:attributeWhenReady("tendermint.endpoint")
+        - type: org.apache.brooklyn.enricher.stock.Aggregator
+          brooklyn.config:
+            uniqueTag: tendermint-pubkey-aggregator
+            enricher.sourceSensor: $brooklyn:sensor("tendermint.machine.pubkey.json")
+            enricher.targetSensor: $brooklyn:sensor("tendermint.pubkey.list")
+            enricher.aggregating.fromMembers: true
+        - type: org.apache.brooklyn.enricher.stock.Joiner
+          brooklyn.config:
+            uniqueTag: tendermint-pubkey-joiner
+            enricher.sourceSensor: $brooklyn:sensor("tendermint.pubkey.list")
+            enricher.targetSensor: $brooklyn:sensor("tendermint.pubkey.json")
+            enricher.joiner.separator: ","
+            enricher.joiner.quote: false
+        - type: org.apache.brooklyn.enricher.stock.Transformer
+          brooklyn.config:
+            uniqueTag: tendermint-genesis-generator
+            enricher.sourceSensor: $brooklyn:sensor("tendermint.pubkey.json")
+            enricher.targetSensor: $brooklyn:sensor("tendermint.genesis.json")
+            enricher.targetValue:
+              $brooklyn:formatString:
+              - "{\"genesis_time\":\"2016-01-01T00:00:00.000Z\",\"chain_id\":\"chain-%s\",\"validators\":[ %s ],\"app_hash\":\"\"}"
+              - $brooklyn:config("tendermint.chainId")
+              - $brooklyn:attributeWhenReady("tendermint.machine.pubkey.data")
 
   - id: tendermint-node
     name: "Tendermint Node"
@@ -126,10 +150,12 @@ brooklyn.catalog:
       brooklyn.enrichers:
       - type: org.apache.brooklyn.enricher.stock.Propagator
         brooklyn.config:
-          uniqueTag: endpoint-propagator
+          uniqueTag: tendermint-machine-propagator
           producer: $brooklyn:child("tendermint-common")
           propagating:
           - $brooklyn:sensor("tendermint.machine.endpoint")
+          - $brooklyn:sensor("tendermint.machine.pubkey")
+          - $brooklyn:sensor("tendermint.machine.pubkey.json")
       brooklyn.children:
       - type: docker:tendermint/tmbase
         id: tendermint-common
@@ -159,12 +185,31 @@ brooklyn.catalog:
               - "%s:%d"
               - $brooklyn:attributeWhenReady("host.address")
               - 46656
+        - type: org.apache.brooklyn.core.sensor.ssh.SshCommandSensor
+          brooklyn.config:
+            name: tendermint.machine.pubkey
+            targetType: string
+            trim: true
+            command: |
+              tendermint show_validator --log_level=error
+        brrooklyn.enrichers:
+          - type: org.apache.brooklyn.enricher.stock.Transformer
+            brooklyn.config:
+              uniqueTag: tendermint-pubkey-generator
+              enricher.sourceSensor: $brooklyn:sensor("tendermint.machine.pubkey")
+              enricher.targetSensor: $brooklyn:sensor("tendermint.machine.pubkey.json")
+              enricher.targetValue:
+                $brooklyn:formatString:
+                - "{\"pub_key\":[1,\"%s\"],\"amount\":1,\"name\":\"%s\"}"
+                - $brooklyn:attributeWhenReady("tendermint.machine.pubkey")
+                - $brooklyn:attributeWhenReady("host.address")
       - type: docker:tendermint/tmbase
         id: tendermint-data
         brooklyn.config:
           docker.image.entrypoint: "/data/tendermint/data/init.sh"
           docker.container.environment:
             TMREPO: "github.com/tendermint/tendermint"
+            TMNAME: $brooklyn:config("tendermint.application.name")
           docker.container.volumes.import:
           - $brooklyn:sibling("tendermint-common").attributeWhenReady("docker.container.id")
           checkRunning.command: |
@@ -180,8 +225,12 @@ brooklyn.catalog:
           docker.container.environment:
             TMREPO: "github.com/tendermint/tendermint"
             TMNAME: $brooklyn:config("tendermint.application.name")
+            GENESIS_JSON: $brooklyn:component("tendermint-cluster").$brooklyn:attributeWhenReady("tendermint.genesis.json")
           docker.container.volumes.import:
           - $brooklyn:sibling("tendermint-common").attributeWhenReady("docker.container.id")
+          post.launch.command: |
+            echo "[BROOKLYN] Create genesis JSON file"
+            echo "${GENESIS_JSON}" > /data/tendermint/core/genesis.json
           checkRunning.command: |
             which ${TMNAME}
           provision.latch:
