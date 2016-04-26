@@ -14,7 +14,7 @@
 
 brooklyn.catalog:
   id: brooklyn-tendermint
-  version: "0.1-20160426.1808"
+  version: "0.1-20160426.2203"
 
   items:
   - id: tendermint-mintnet
@@ -117,8 +117,6 @@ brooklyn.catalog:
       type: org.apache.brooklyn.entity.stock.BasicStartable
       brooklyn.config:
         docker.useSsh: false
-        docker.image.entrypoint: "/bin/bash"
-        docker.container.interactive: true
         run.dir: /tmp/tendermint
         docker.container.strategies:
         - $brooklyn:object:
@@ -136,13 +134,21 @@ brooklyn.catalog:
       - type: docker:tendermint/tmbase
         id: tendermint-common
         brooklyn.config:
+          docker.container.interactive: true
+          docker.container.environment:
+            TMREPO: "github.com/tendermint/tendermint"
           docker.container.volumes.export: "/data"
           files.runtime:
             $brooklyn:config("tendermint.application.archive"): "/data/tendermint/application.tgz"
-          post.launch.command: |
+          pre.launch.command: |
             echo "[BROOKLYN] Setup Tendermint directory for this host"
             cd /data/tendermint
             tar zxf application.tgz
+          post.launch.command: |
+            echo "[BROOKLYN] Check Tendermint validator"
+            while [ ! $(which tendermint) ] ; do sleep 10 ; done
+            tendermint show_validator --log_level=error
+            mv ~/.tendermint/priv_validator.json /data/tendermint/core/
         brooklyn.initializers:
         - type: org.apache.brooklyn.core.sensor.StaticSensor
           brooklyn.config:
@@ -156,11 +162,11 @@ brooklyn.catalog:
       - type: docker:tendermint/tmbase
         id: tendermint-data
         brooklyn.config:
+          docker.image.entrypoint: "/data/tendermint/data/init.sh"
+          docker.container.environment:
+            TMREPO: "github.com/tendermint/tendermint"
           docker.container.volumes.import:
           - $brooklyn:sibling("tendermint-common").attributeWhenReady("docker.container.id")
-          pre.launch.command: |
-            echo "[BROOKLYN] Tendermint init script"
-            /data/tendermint/data/init.sh &
           checkRunning.command: |
             test -S "/data/tendermint/data/data.sock"
           provision.latch:
@@ -168,20 +174,22 @@ brooklyn.catalog:
       - type: docker:tendermint/tmbase
         id: tendermint-app
         brooklyn.config:
+          docker.image.entrypoint: "/data/tendermint/app/init.sh"
           docker.container.directPorts:
           - 46658
+          docker.container.environment:
+            TMREPO: "github.com/tendermint/tendermint"
+            TMNAME: $brooklyn:config("tendermint.application.name")
           docker.container.volumes.import:
           - $brooklyn:sibling("tendermint-common").attributeWhenReady("docker.container.id")
-          pre.launch.command: |
-            echo "[BROOKLYN] Tendermint init script"
-            /data/tendermint/app/init.sh &
           checkRunning.command: |
-            test -S "/data/tendermint/data/data.sock"
+            which ${TMNAME}
           provision.latch:
             $brooklyn:sibling("tendermint-data").attributeWhenReady("service.isUp")
       - type: docker:tendermint/tmbase
         id: tendermint-core
         brooklyn.config:
+          docker.image.entrypoint: "/data/tendermint/core/init.sh"
           docker.container.links:
             $brooklyn:formatString("%s_tmapp", $brooklyn:config("tendermint.application.name")):
               $brooklyn:sibling("tendermint-app")
@@ -189,9 +197,11 @@ brooklyn.catalog:
           - 46656
           - 46657
           docker.container.environment:
+            TMREPO: "github.com/tendermint/tendermint"
             TMNAME: $brooklyn:config("tendermint.application.name")
             TMSEEDS: $brooklyn:component("tendermint-cluster").attributeWhenReady("tendermint.seeds")
             TMROOT: "/data/tendermint/core"
+            GODEBUG: "netdns=cgo"
             PROXYAPP:
               $brooklyn:formatString:
               - "tcp://%s_tmapp:46658/"
@@ -199,12 +209,8 @@ brooklyn.catalog:
           docker.container.volumes.import:
           - $brooklyn:sibling("tendermint-common").attributeWhenReady("docker.container.id")
           pre.launch.command: |
-            echo "[BROOKLYN] Tendermint init script"
-            /data/tendermint/core/init.sh &
-          post.launch.command: |
             echo "[BROOKLYN] Check Tendermint validator"
             while [ ! $(which tendermint) ] ; do sleep 10 ; done
             tendermint show_validator --log_level=error
-            mv ~/.tendermint/priv_validator.json /data/tendermint/core/
           provision.latch:
             $brooklyn:sibling("tendermint-app").attributeWhenReady("service.isUp")
