@@ -14,7 +14,7 @@
 
 brooklyn.catalog:
   id: brooklyn-tendermint
-  version: "0.1-20160426.2314"
+  version: "0.1-20160427.0001"
 
   items:
   - id: tendermint-mintnet
@@ -171,15 +171,15 @@ brooklyn.catalog:
             cd /data/tendermint
             tar zxf application.tgz
           post.launch.command: |
-            echo "[BROOKLYN] Check Tendermint validator"
+            echo "[BROOKLYN] Create Tendermint validator file"
             while [ ! $(which tendermint) ] ; do sleep 10 ; done
-            tendermint show_validator --log_level=error
-            mv ~/.tendermint/priv_validator.json /data/tendermint/core/
+            tendermint gen_validator | tail -n +4 > /data/tendermint/priv_validator.json
+            cp /data/tendermint/priv_validator.json /data/tendermint/core/priv_validator.json
         brooklyn.initializers:
         - type: org.apache.brooklyn.core.sensor.StaticSensor
           brooklyn.config:
             name: tendermint.machine.endpoint
-            targetType: string
+            targetType: java.lang.String
             static.value:
               $brooklyn:formatString:
               - "%s:%d"
@@ -188,21 +188,21 @@ brooklyn.catalog:
         - type: org.apache.brooklyn.core.sensor.ssh.SshCommandSensor
           brooklyn.config:
             name: tendermint.machine.pubkey
-            targetType: string
-            trim: true
+            targetType: java.lang.String
+            period: 1m
             command: |
-              tendermint show_validator --log_level=error
-        brrooklyn.enrichers:
-          - type: org.apache.brooklyn.enricher.stock.Transformer
-            brooklyn.config:
-              uniqueTag: tendermint-pubkey-generator
-              enricher.sourceSensor: $brooklyn:sensor("tendermint.machine.pubkey")
-              enricher.targetSensor: $brooklyn:sensor("tendermint.machine.pubkey.json")
-              enricher.targetValue:
-                $brooklyn:formatString:
-                - "{\"pub_key\":[1,\"%s\"],\"amount\":1,\"name\":\"%s\"}"
-                - $brooklyn:attributeWhenReady("tendermint.machine.pubkey")
-                - $brooklyn:attributeWhenReady("host.address")
+              tendermint show_validator --log_level=error | tr -d '\\n\\\"'
+        brooklyn.enrichers:
+        - type: org.apache.brooklyn.enricher.stock.Transformer
+          brooklyn.config:
+            uniqueTag: tendermint-pubkey-generator
+            enricher.sourceSensor: $brooklyn:sensor("tendermint.machine.pubkey")
+            enricher.targetSensor: $brooklyn:sensor("tendermint.machine.pubkey.json")
+            enricher.targetValue:
+              $brooklyn:formatString:
+              - "{\"pub_key\":[1,\"%s\"],\"amount\":1,\"name\":\"%s\"}"
+              - $brooklyn:attributeWhenReady("tendermint.machine.pubkey")
+              - $brooklyn:attributeWhenReady("host.address")
       - type: docker:tendermint/tmbase
         id: tendermint-data
         brooklyn.config:
@@ -213,7 +213,7 @@ brooklyn.catalog:
           docker.container.volumes.import:
           - $brooklyn:sibling("tendermint-common").attributeWhenReady("docker.container.id")
           checkRunning.command: |
-            test -S "/data/tendermint/data/data.sock"
+            test -S /data/tendermint/data/data.sock
           provision.latch:
             $brooklyn:sibling("tendermint-common").attributeWhenReady("service.isUp")
       - type: docker:tendermint/tmbase
@@ -225,6 +225,7 @@ brooklyn.catalog:
           docker.container.environment:
             TMREPO: "github.com/tendermint/tendermint"
             TMNAME: $brooklyn:config("tendermint.application.name")
+          shell.environment:
             GENESIS_JSON: $brooklyn:component("tendermint-cluster").$brooklyn:attributeWhenReady("tendermint.genesis.json")
           docker.container.volumes.import:
           - $brooklyn:sibling("tendermint-common").attributeWhenReady("docker.container.id")
