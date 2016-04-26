@@ -14,7 +14,7 @@
 
 brooklyn.catalog:
   id: brooklyn-tendermint
-  version: "0.1-20160426.2203"
+  version: "0.1-20160426.2221"
 
   items:
   - id: tendermint-mintnet
@@ -204,7 +204,7 @@ brooklyn.catalog:
             GODEBUG: "netdns=cgo"
             PROXYAPP:
               $brooklyn:formatString:
-              - "tcp://%s_tmapp:46658/"
+              - "tcp://%s_tmapp:46658"
               - $brooklyn:config("tendermint.application.name")
           docker.container.volumes.import:
           - $brooklyn:sibling("tendermint-common").attributeWhenReady("docker.container.id")
