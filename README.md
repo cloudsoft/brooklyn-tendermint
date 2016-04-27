@@ -29,18 +29,12 @@ but there are many examples available if you want to experiment.
 ## Getting Started
 
 First, deploy a Clocker environment, using the latest release in the 1.1.x
-stream.
-
-***IMPORTANT*** Until the `group-placement-locking` branch is merged as PR
-[#272](https://github.com/brooklyncentral/clocker/pull/272) you must build
-a local version of Clocker from a checked out copy of the GitHub repository.
+stream. Build Clocker from a checked out copy of its GitHub repository.
 
 ```Bash
 % git clone git@github.com:brooklyncentral/clocker.git
 ...
 % cd clocker
-% git checkout -b group-placement-locking origin group-placement-locking
-...
 % mvn clean install
 ...
 ```
@@ -57,7 +51,7 @@ services:
   brooklyn.config:
     entity.dynamicLocation.name: "calico-docker-cloud"
     docker.host.cluster.initial.size: 4
-    docker.version: 1.8.1
+    docker.version: 1.10.3
     docker.host.securityGroup: "clocker"
 ```
 
@@ -68,7 +62,7 @@ You may also wish to install the Brooklyn CLI, which is packaged separately.
 Once Docker is ready, deploy the [tendermint-mintnet.bom](tendermint-mintnet.bom)
 file into the Clocker catalog. Then, you must ensure you have access to an
 archive containing the required data files for your mintnet application, and
-configure a blueprint to point to them.t
+configure a blueprint to point to them.
 
 ### MintNet Basecoin Application Blueprint
 
@@ -77,9 +71,11 @@ have been uploaded as [basecoin.tgz](https://s3-eu-west-1.amazonaws.com/brooklyn
 for use in a Brooklyn blueprint, as follows:
 
 ```YAML
+location: calico-docker-cloud
 services:
 - type: tendermint-mintnet
   brooklyn.config:
+    tendermint.node.count: 4
     tendermint.application.name: "basecoin"
     tendermint.application.archive: "https://s3-eu-west-1.amazonaws.com/brooklyn-tendermint/basecoin.tgz"
 ```
