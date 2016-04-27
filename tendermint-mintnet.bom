@@ -14,7 +14,7 @@
 
 brooklyn.catalog:
   id: brooklyn-tendermint
-  version: "0.1-20160427.0217"
+  version: "0.1-20160427.0235"
 
   items:
   - id: tendermint-mintnet
@@ -101,15 +101,20 @@ brooklyn.catalog:
             enricher.joiner.minimum: 1
             enricher.joiner.maximum: 1
             enricher.joiner.quote: false
-        - type: org.apache.brooklyn.enricher.stock.Transformer
+        - type: org.apache.brooklyn.enricher.stock.Aggregator
           brooklyn.config:
-            uniqueTag: tendermint-main-uri-generator
-            enricher.sourceSensor: $brooklyn:sensor("tendermint.endpoint")
+            uniqueTag: tendermint-main-uri-aggregator
+            enricher.sourceSensor: $brooklyn:sensor("main.uri")
+            enricher.targetSensor: $brooklyn:sensor("main.uri.list")
+            enricher.aggregating.fromMembers: true
+        - type: org.apache.brooklyn.enricher.stock.Joiner
+          brooklyn.config:
+            uniqueTag: tendermint-main-uri
+            enricher.sourceSensor: $brooklyn:sensor("main.uri.list")
             enricher.targetSensor: $brooklyn:sensor("main.uri")
-            enricher.targetValue:
-              $brooklyn:formatString:
-              - "http://%s/blockchain"
-              - $brooklyn:attributeWhenReady("tendermint.endpoint")
+            enricher.joiner.minimum: 1
+            enricher.joiner.maximum: 1
+            enricher.joiner.quote: false
         - type: org.apache.brooklyn.enricher.stock.Aggregator
           brooklyn.config:
             uniqueTag: tendermint-pubkey-aggregator
@@ -158,6 +163,12 @@ brooklyn.catalog:
           - $brooklyn:sensor("tendermint.machine.endpoint")
           - $brooklyn:sensor("tendermint.machine.pubkey")
           - $brooklyn:sensor("tendermint.machine.pubkey.json")
+      - type: org.apache.brooklyn.enricher.stock.Propagator
+        brooklyn.config:
+          uniqueTag: tendermint-uri-propagator
+          producer: $brooklyn:child("tendermint-core")
+          propagating:
+          - $brooklyn:sensor("main.uri")
       brooklyn.children:
       - type: docker:tendermint/tmbase
         id: tendermint-common
@@ -266,3 +277,13 @@ brooklyn.catalog:
             tendermint show_validator --log_level=error
           provision.latch:
             $brooklyn:sibling("tendermint-app").attributeWhenReady("service.isUp")
+        brooklyn.initializers:
+        - type: org.apache.brooklyn.core.sensor.StaticSensor
+          brooklyn.config:
+            name: main.uri
+            targetType: java.lang.String
+            static.value:
+              $brooklyn:formatString:
+              - "http://%s:%d/"
+              - $brooklyn:attributeWhenReady("host.address")
+              - 46657
