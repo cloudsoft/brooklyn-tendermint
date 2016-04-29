@@ -14,7 +14,7 @@
 
 brooklyn.catalog:
   id: brooklyn-tendermint
-  version: "0.1-20160427.0235"
+  version: "0.2"
 
   items:
   - id: tendermint-mintnet
